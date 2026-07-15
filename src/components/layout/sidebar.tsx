@@ -157,7 +157,7 @@ export function Sidebar({ isMobileOpen, onMobileClose }: SidebarProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => signOut()}
+              onClick={() => signOut({ callbackUrl: "/login" })}
               className="text-sidebar-foreground/70 hover:text-sidebar-foreground ml-auto"
             >
               <LogOut className="h-4 w-4" />

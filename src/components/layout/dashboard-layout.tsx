@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Sidebar } from "./sidebar"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
@@ -37,12 +38,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
               LF
             </div>
             <span className="font-bold">LeadFlow</span>
           </div>
+          <ThemeToggle />
+        </div>
+        {/* Desktop theme toggle (always visible on large screens) */}
+        <div className="hidden lg:block lg:fixed lg:top-4 lg:right-4 lg:z-50">
+          <ThemeToggle />
         </div>
         <div className="p-3 sm:p-6 lg:p-8">{children}</div>
       </main>
