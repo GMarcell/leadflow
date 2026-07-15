@@ -9,6 +9,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   closestCorners,
 } from "@dnd-kit/core"
 import {
@@ -72,6 +73,65 @@ function SortableLeadCard({ lead, onUpdate }: { lead: Lead; onUpdate: () => void
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <LeadCard lead={lead} onUpdate={onUpdate} isDragging={isDragging} />
+    </div>
+  )
+}
+
+function DroppableColumn({
+  stage,
+  leads,
+  stageValue,
+  onUpdate,
+}: {
+  stage: { key: string; label: string; color: string }
+  leads: Lead[]
+  stageValue: number
+  onUpdate: () => void
+}) {
+  const { setNodeRef: droppableRef, isOver } = useDroppable({ id: stage.key })
+
+  return (
+    <div
+      ref={droppableRef}
+      className={`flex-shrink-0 w-72 transition-opacity ${isOver ? "opacity-80" : ""}`}
+    >
+      <Card>
+        <CardHeader className="p-3 pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${stage.color.split(" ")[0]}`} />
+              <CardTitle className="text-sm font-medium">{stage.label}</CardTitle>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {leads.length}
+            </Badge>
+          </div>
+          {stageValue > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatCurrency(stageValue)}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent className="p-3 pt-2 space-y-2 min-h-[120px]">
+          <SortableContext
+            items={leads.map((l) => l.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {leads.map((lead) => (
+              <SortableLeadCard
+                key={lead.id}
+                lead={lead}
+                onUpdate={onUpdate}
+              />
+            ))}
+          </SortableContext>
+          {leads.length === 0 && (
+            <div className="flex items-center justify-center h-20 border-2 border-dashed rounded-lg border-muted-foreground/20">
+              <p className="text-xs text-muted-foreground">Drop leads here</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -162,45 +222,13 @@ export function KanbanBoard({ leads: allLeads, onUpdate }: KanbanBoardProps) {
           const stageValue = getStageValue(stage.key)
 
           return (
-            <div key={stage.key} className="flex-shrink-0 w-72">
-              <Card>
-                <CardHeader className="p-3 pb-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${stage.color.split(" ")[0]}`} />
-                      <CardTitle className="text-sm font-medium">{stage.label}</CardTitle>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {stageLeads.length}
-                    </Badge>
-                  </div>
-                  {stageValue > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {formatCurrency(stageValue)}
-                    </p>
-                  )}
-                </CardHeader>
-                <CardContent className="p-3 pt-2 space-y-2 min-h-[120px]">
-                  <SortableContext
-                    items={stageLeads.map((l) => l.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {stageLeads.map((lead) => (
-                      <SortableLeadCard
-                        key={lead.id}
-                        lead={lead}
-                        onUpdate={onUpdate}
-                      />
-                    ))}
-                  </SortableContext>
-                  {stageLeads.length === 0 && (
-                    <div className="flex items-center justify-center h-20 border-2 border-dashed rounded-lg border-muted-foreground/20">
-                      <p className="text-xs text-muted-foreground">Drop leads here</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            <DroppableColumn
+              key={stage.key}
+              stage={stage}
+              leads={stageLeads}
+              stageValue={stageValue}
+              onUpdate={onUpdate}
+            />
           )
         })}
       </div>
