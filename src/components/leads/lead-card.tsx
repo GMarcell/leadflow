@@ -182,103 +182,107 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
 
     const latestNote = lead.notes?.[0]
 
-    return (
-      <>
-        <Card
-          ref={ref}
-          style={style}
-          className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${isDragging ? "opacity-50 shadow-lg" : ""}`}
-          {...props}
-        >
-          <CardContent className="p-3 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{lead.name}</p>
-                {lead.company && (
-                  <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
-                )}
-              </div>
-              <div className="flex gap-0.5 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setShowEdit(true)}
-                  className="h-6 w-6"
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleDelete}
-                  className="h-6 w-6 text-destructive"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-
-            {lead.dealValue && lead.dealValue > 0 && (
-              <p className="text-sm font-semibold text-primary">
-                {formatCurrency(lead.dealValue)}
-              </p>
-            )}
-
-            {lead.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {lead.tags.slice(0, 3).map((tag, i) => (
-                  <Badge key={`${tag}-${i}`} variant="secondary" className="text-[10px] px-1.5 py-0">
-                    {tag}
-                  </Badge>
-                ))}
-                {lead.tags.length > 3 && (
-                  <span className="text-[10px] text-muted-foreground">+{lead.tags.length - 3}</span>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <span>{lead.source.replace("_", " ")}</span>
-              <span>·</span>
-              <span>{timeAgo(lead.createdAt)}</span>
-            </div>
-
-            <div className="flex items-center gap-1 pt-1 border-t">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="h-7 w-7"
-                onClick={() => setShowNote(true)}
-                title="Add note"
-              >
-                <MessageSquarePlus className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="h-7 w-7"
-                onClick={() => setShowFollowUp(true)}
-                title="Set follow-up"
-              >
-                <CalendarPlus className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="h-7 w-7 text-amber-500/70 hover:text-amber-500 hover:bg-amber-500/10"
-                onClick={() => { setShowSuggest(true); handleGetSuggestion() }}
-                title="Get AI suggestion"
-              >
-                <Lightbulb className="h-3.5 w-3.5" />
-              </Button>
-              {latestNote && (
-                <span className="text-[10px] text-muted-foreground ml-auto">
-                  {lead.notes.length} note{lead.notes.length !== 1 ? "s" : ""}
-                </span>
+    const cardContent = (
+      <Card
+        ref={ref}
+        style={style}
+        className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${isDragging ? "opacity-50 shadow-lg" : ""}`}
+        {...props}
+      >
+        <CardContent className="p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{lead.name}</p>
+              {lead.company && (
+                <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex gap-0.5 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setShowEdit(true)}
+                className="h-6 w-6"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleDelete}
+                className="h-6 w-6 text-destructive"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+
+          {lead.dealValue && lead.dealValue > 0 && (
+            <p className="text-sm font-semibold text-primary">
+              {formatCurrency(lead.dealValue)}
+            </p>
+          )}
+
+          {lead.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {lead.tags.slice(0, 3).map((tag, i) => (
+                <Badge key={`${tag}-${i}`} variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {tag}
+                </Badge>
+              ))}
+              {lead.tags.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">+{lead.tags.length - 3}</span>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span>{lead.source.replace("_", " ")}</span>
+            <span>·</span>
+            <span>{timeAgo(lead.createdAt)}</span>
+          </div>
+
+          <div className="flex items-center gap-1 pt-1 border-t">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-7 w-7"
+              onClick={() => setShowNote(true)}
+              title="Add note"
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-7 w-7"
+              onClick={() => setShowFollowUp(true)}
+              title="Set follow-up"
+            >
+              <CalendarPlus className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-7 w-7 text-amber-500/70 hover:text-amber-500 hover:bg-amber-500/10"
+              onClick={() => { setShowSuggest(true); handleGetSuggestion() }}
+              title="Get AI suggestion"
+            >
+              <Lightbulb className="h-3.5 w-3.5" />
+            </Button>
+            {latestNote && (
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {lead.notes.length} note{lead.notes.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    )
+
+    return (
+      <div>
+        {cardContent}
 
         {/* Edit Dialog */}
         <Dialog open={showEdit} onOpenChange={setShowEdit}>
@@ -451,7 +455,7 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
             </div>
           </DialogContent>
         </Dialog>
-      </>
+      </div>
     )
   }
 )

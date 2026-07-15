@@ -71,7 +71,13 @@ function SortableLeadCard({ lead, onUpdate }: { lead: Lead; onUpdate: () => void
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="touch-none"
+    >
       <LeadCard lead={lead} onUpdate={onUpdate} isDragging={isDragging} />
     </div>
   )
