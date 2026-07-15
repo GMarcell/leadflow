@@ -225,7 +225,7 @@ export default function DashboardPage() {
   )
 }
 
-function getStatusVariant(status: string): "default" | "secondary" | "success" | "warning" | "info" {
+function getStatusVariant(status: string): "default" | "secondary" | "success" | "warning" | "info" | "destructive" {
   switch (status) {
     case "NEW": return "info"
     case "CONTACTED": return "secondary"
