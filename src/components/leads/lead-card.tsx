@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Textarea } from "@/components/ui/textarea"
 import { LeadForm } from "./lead-form"
 import { formatCurrency, formatDateTime, timeAgo } from "@/lib/utils"
-import { Pencil, Trash2, MessageSquarePlus, Sparkles, Loader2, CalendarPlus } from "lucide-react"
+import { Pencil, Trash2, MessageSquarePlus, Sparkles, Loader2, CalendarPlus, Lightbulb } from "lucide-react"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -48,6 +48,12 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
     const [fuDate, setFuDate] = useState("")
     const [fuDesc, setFuDesc] = useState("")
     const [isSavingFu, setIsSavingFu] = useState(false)
+
+    // AI suggestion
+    const [showSuggest, setShowSuggest] = useState(false)
+    const [isSuggesting, setIsSuggesting] = useState(false)
+    const [suggestion, setSuggestion] = useState<string | null>(null)
+    const [suggestionError, setSuggestionError] = useState<string | null>(null)
 
     async function handleDelete() {
       if (!confirm("Delete this lead?")) return
@@ -105,6 +111,47 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
       }
     }
 
+    function getDaysSinceLastContact(): number {
+      const latestNote = lead.notes?.[0]
+      if (!latestNote) return 0
+      const lastContact = new Date(latestNote.createdAt)
+      const now = new Date()
+      return Math.floor((now.getTime() - lastContact.getTime()) / 86400000)
+    }
+
+    function getLatestNoteContent(): string {
+      const latestNote = lead.notes?.[0]
+      return latestNote?.content?.slice(0, 500) || ""
+    }
+
+    async function handleGetSuggestion() {
+      setIsSuggesting(true)
+      setSuggestion(null)
+      setSuggestionError(null)
+      try {
+        const res = await fetch("/api/ai/suggest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leadName: lead.name,
+            leadStage: lead.status,
+            notes: getLatestNoteContent(),
+            daysSinceLastContact: getDaysSinceLastContact(),
+          }),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || "AI suggestion failed")
+        }
+        const data = await res.json()
+        setSuggestion(data.suggestion)
+      } catch (err) {
+        setSuggestionError(err instanceof Error ? err.message : "Failed to get suggestion")
+      } finally {
+        setIsSuggesting(false)
+      }
+    }
+
     async function handleSaveFollowUp() {
       if (!fuTitle.trim() || !fuDate) return
       setIsSavingFu(true)
@@ -133,7 +180,7 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
       }
     }
 
-    const latestNote = lead.notes?.[lead.notes.length - 1]
+    const latestNote = lead.notes?.[0]
 
     return (
       <>
@@ -215,6 +262,15 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
               >
                 <CalendarPlus className="h-3.5 w-3.5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-7 w-7 text-amber-500/70 hover:text-amber-500 hover:bg-amber-500/10"
+                onClick={() => { setShowSuggest(true); handleGetSuggestion() }}
+                title="Get AI suggestion"
+              >
+                <Lightbulb className="h-3.5 w-3.5" />
+              </Button>
               {latestNote && (
                 <span className="text-[10px] text-muted-foreground ml-auto">
                   {lead.notes.length} note{lead.notes.length !== 1 ? "s" : ""}
@@ -289,6 +345,58 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
                   Save Note
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* AI Suggestion Dialog */}
+        <Dialog open={showSuggest} onOpenChange={(open) => { setShowSuggest(open); if (!open) { setSuggestion(null); setSuggestionError(null) } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-amber-500" />
+                AI Follow-up Suggestion
+              </DialogTitle>
+              <DialogDescription>
+                Based on {lead.name}&apos;s stage ({lead.status.replace("_", " ")}) and recent activity
+              </DialogDescription>
+            </DialogHeader>
+            <div className="min-h-[120px]">
+              {isSuggesting ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">
+                    Analyzing lead data and generating suggestion...
+                  </p>
+                </div>
+              ) : suggestionError ? (
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                  <p className="text-sm text-destructive font-medium mb-1">Unable to generate suggestion</p>
+                  <p className="text-xs text-muted-foreground">{suggestionError}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Set your <code className="bg-muted px-1 rounded text-[10px]">GROQ_API_KEY</code> in .env to enable AI features.
+                  </p>
+                </div>
+              ) : suggestion ? (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Suggested Action</span>
+                  </div>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{suggestion}</p>
+                </div>
+              ) : null}
+            </div>
+            <div className="flex justify-end gap-2">
+              {suggestionError && (
+                <Button variant="outline" size="sm" onClick={handleGetSuggestion} className="gap-2">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Try Again
+                </Button>
+              )}
+              <Button size="sm" onClick={() => { setShowSuggest(false); setSuggestion(null); setSuggestionError(null) }}>
+                Close
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

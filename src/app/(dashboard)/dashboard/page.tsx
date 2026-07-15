@@ -4,19 +4,40 @@ import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { Users, DollarSign, TrendingUp, Target, CalendarClock, ArrowRight } from "lucide-react"
+import { Users, DollarSign, TrendingUp, Target, CalendarClock, ArrowRight, Check, Loader2 } from "lucide-react"
 import { formatCurrency, formatDate, timeAgo } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import useSWR from "swr"
+import { useState } from "react"
+import { toast } from "sonner"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export default function DashboardPage() {
   const { data: session } = useSession()
-  const { data, error, isLoading } = useSWR("/api/dashboard", fetcher, {
+  const { data, error, isLoading, mutate } = useSWR("/api/dashboard", fetcher, {
     refreshInterval: 30000,
   })
+  const [completingId, setCompletingId] = useState<string | null>(null)
+
+  async function handleMarkComplete(fuId: string) {
+    setCompletingId(fuId)
+    try {
+      const res = await fetch(`/api/follow-ups?id=${fuId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: true }),
+      })
+      if (!res.ok) throw new Error("Failed to complete follow-up")
+      toast.success("Follow-up marked as complete")
+      mutate()
+    } catch {
+      toast.error("Failed to complete follow-up")
+    } finally {
+      setCompletingId(null)
+    }
+  }
 
   if (error) {
     return (
@@ -133,7 +154,7 @@ export default function DashboardPage() {
                 {data.followUps.slice(0, 5).map((fu: any) => (
                   <div
                     key={fu.id}
-                    className="flex items-start justify-between rounded-lg border p-3"
+                    className="flex items-start justify-between rounded-lg border p-3 group hover:bg-muted/30 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{fu.title}</p>
@@ -141,16 +162,31 @@ export default function DashboardPage() {
                         {fu.lead?.name} — {formatDate(fu.dueDate)}
                       </p>
                     </div>
-                    <Badge
-                      variant={
-                        new Date(fu.dueDate) < new Date()
-                          ? "destructive"
-                          : "warning"
-                      }
-                      className="ml-2 shrink-0"
-                    >
-                      {new Date(fu.dueDate) < new Date() ? "Overdue" : "Today"}
-                    </Badge>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleMarkComplete(fu.id)}
+                        disabled={completingId === fu.id}
+                        className="h-7 w-7 text-muted-foreground/50 hover:text-emerald-600 hover:bg-emerald-500/10 transition-all"
+                        title="Mark as complete"
+                      >
+                        {completingId === fu.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                      <Badge
+                        variant={
+                          new Date(fu.dueDate) < new Date()
+                            ? "destructive"
+                            : "warning"
+                        }
+                      >
+                        {new Date(fu.dueDate) < new Date() ? "Overdue" : "Today"}
+                      </Badge>
+                    </div>
                   </div>
                 ))}
                 <Button variant="outline" size="sm" className="w-full" asChild>
