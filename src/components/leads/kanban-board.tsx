@@ -148,7 +148,7 @@ export function KanbanBoard({ leads: allLeads, onUpdate }: KanbanBoardProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 4,
       },
     })
   )
@@ -174,7 +174,6 @@ export function KanbanBoard({ leads: allLeads, onUpdate }: KanbanBoardProps) {
 
       if (!over) return
 
-      // If dropped over a lead, find which column it's in
       const activeLead = allLeads.find((l) => l.id === active.id)
       if (!activeLead) return
 
@@ -189,10 +188,29 @@ export function KanbanBoard({ leads: allLeads, onUpdate }: KanbanBoardProps) {
         }
       }
 
-      if (!targetStage || targetStage === activeLead.status) return
+      if (!targetStage) return
 
-      // Optimistic update
-      const newOrder = getLeadsByStage(targetStage).length
+      // Determine the new order position based on where the card was dropped
+      const stageLeads = getLeadsByStage(targetStage)
+      const activeLeadIndex = stageLeads.findIndex((l) => l.id === activeLead.id)
+
+      let newOrder: number
+      if (STAGES.some((s) => s.key === over.id)) {
+        // Dropped directly on the column — place at the end
+        newOrder = stageLeads.length
+        // If same stage, adjust since the card is being removed from its current spot
+        if (targetStage === activeLead.status) {
+          newOrder = Math.max(0, stageLeads.length - 1)
+        }
+      } else {
+        // Dropped on a specific card — take that card's position
+        const overIndex = stageLeads.findIndex((l) => l.id === over.id)
+        newOrder = overIndex >= 0 ? overIndex : stageLeads.length
+      }
+
+      // Skip if the card didn't actually move
+      const sameStage = targetStage === activeLead.status
+      if (sameStage && activeLeadIndex === newOrder) return
 
       try {
         const res = await fetch("/api/pipeline/move", {
