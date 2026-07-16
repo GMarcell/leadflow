@@ -1,16 +1,22 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createFollowUpSchema, updateFollowUpSchema } from "@/lib/validation"
+import { getUserRole, canModifyLead, unauthorized, forbidden } from "@/lib/authorization"
 
 export async function GET() {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
     }
 
+    const role = getUserRole(session)
+    const where = role === "ADMIN" || role === "MANAGER" || role === "VIEWER"
+      ? {}
+      : { userId: session.user.id }
+
     const followUps = await prisma.followUp.findMany({
-      where: { userId: session.user.id },
+      where,
       include: { lead: { select: { name: true } } },
       orderBy: { dueDate: "asc" },
     })
@@ -26,7 +32,12 @@ export async function POST(request: Request) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
+    }
+
+    // VIEWER cannot create follow-ups
+    if (!canModifyLead(getUserRole(session))) {
+      return forbidden()
     }
 
     const body = await request.json()
@@ -39,9 +50,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verify lead belongs to user
+    // Verify lead belongs to user (or accessible by role)
+    const role = getUserRole(session)
     const lead = await prisma.lead.findFirst({
-      where: { id: result.data.leadId, userId: session.user.id },
+      where: role === "ADMIN" || role === "MANAGER"
+        ? { id: result.data.leadId }
+        : { id: result.data.leadId, userId: session.user.id },
     })
 
     if (!lead) {
@@ -69,7 +83,12 @@ export async function PATCH(request: Request) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
+    }
+
+    // VIEWER cannot update follow-ups
+    if (!canModifyLead(getUserRole(session))) {
+      return forbidden()
     }
 
     const { searchParams } = new URL(request.url)
@@ -89,8 +108,11 @@ export async function PATCH(request: Request) {
       )
     }
 
+    const role = getUserRole(session)
     const followUp = await prisma.followUp.findFirst({
-      where: { id, userId: session.user.id },
+      where: role === "ADMIN" || role === "MANAGER"
+        ? { id }
+        : { id, userId: session.user.id },
     })
 
     if (!followUp) {
@@ -116,7 +138,13 @@ export async function DELETE(request: Request) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
+    }
+
+    // Only ADMIN and MANAGER can delete follow-ups
+    const role = getUserRole(session)
+    if (role !== "ADMIN" && role !== "MANAGER") {
+      return forbidden()
     }
 
     const { searchParams } = new URL(request.url)
@@ -127,7 +155,9 @@ export async function DELETE(request: Request) {
     }
 
     const followUp = await prisma.followUp.findFirst({
-      where: { id, userId: session.user.id },
+      where: role === "ADMIN" || role === "MANAGER"
+        ? { id }
+        : { id, userId: session.user.id },
     })
 
     if (!followUp) {

@@ -85,20 +85,33 @@ async function main() {
   await prisma.lead.deleteMany()
   await prisma.user.deleteMany()
 
-  // Create demo user
   const password = await hash("demo123456", 12)
 
-  const user = await prisma.user.create({
-    data: {
-      name: "Alex Morgan",
-      email: "demo@leadflow.app",
-      password,
-    },
-  })
+  // ── Create users with different roles ──
 
-  console.log(`✅ Created demo user: demo@leadflow.app / demo123456`)
+  const users = [
+    { name: "Admin User", email: "admin@leadflow.app", role: "ADMIN" as const },
+    { name: "Manager User", email: "manager@leadflow.app", role: "MANAGER" as const },
+    { name: "Viewer User", email: "viewer@leadflow.app", role: "VIEWER" as const },
+    { name: "Alex Morgan", email: "demo@leadflow.app", role: "USER" as const },
+  ]
 
-  // Generate 120 leads with realistic data
+  const createdUsers = []
+  for (const u of users) {
+    const user = await prisma.user.create({
+      data: {
+        name: u.name,
+        email: u.email,
+        password,
+        role: u.role,
+      },
+    })
+    createdUsers.push(user)
+    console.log(`✅ Created ${u.role.toLowerCase()} user: ${u.email} / demo123456`)
+  }
+
+  // Generate 120 leads for the main demo user (Alex Morgan / USER)
+  const mainUser = createdUsers.find((u) => u.email === "demo@leadflow.app")!
   const usedNames = new Set<string>()
 
   for (let i = 0; i < 120; i++) {
@@ -130,7 +143,7 @@ async function main() {
       tags: randomInt(0, 3) > 0 ? Array.from({ length: randomInt(1, 4) }, () => randomItem(TAGS)) : [],
       dealValue: leadValue,
       status,
-      userId: user.id,
+      userId: mainUser.id,
       pipelineOrder: randomInt(0, 20),
       createdAt,
     }
@@ -150,7 +163,7 @@ async function main() {
             .replace("{company}", created.company || "their company")
             .replace("{size}", String(randomInt(5, 200))),
           leadId: created.id,
-          userId: user.id,
+          userId: mainUser.id,
           createdAt: noteDate,
         },
       })
@@ -168,14 +181,20 @@ async function main() {
           description: `Follow up with ${created.name} at ${created.company || "their company"}`,
           dueDate,
           leadId: created.id,
-          userId: user.id,
+          userId: mainUser.id,
           completed: fuDays < 0 ? Math.random() > 0.5 : false,
         },
       })
     }
   }
 
-  console.log(`✅ Created 120 leads with notes and follow-ups`)
+  console.log(`✅ Created 120 leads with notes and follow-ups for Alex Morgan`)
+  console.log("")
+  console.log("📋 Available accounts:")
+  console.log("   Admin:   admin@leadflow.app / demo123456")
+  console.log("   Manager: manager@leadflow.app / demo123456")
+  console.log("   Viewer:  viewer@leadflow.app / demo123456")
+  console.log("   User:    demo@leadflow.app / demo123456")
   console.log("✅ Seeding complete!")
 }
 

@@ -55,7 +55,7 @@ describe("GET /api/leads", () => {
   })
 
   it("returns empty list when user has no leads", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findMany.mockResolvedValue([])
 
     const { GET } = await import("@/app/api/leads/route")
@@ -67,7 +67,7 @@ describe("GET /api/leads", () => {
   })
 
   it("returns leads for authenticated user", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     const mockLeads = [
       {
         id: "lead-1",
@@ -99,7 +99,7 @@ describe("GET /api/leads", () => {
   })
 
   it("includes notes and follow-ups in response", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findMany.mockResolvedValue([
       {
         id: "lead-1",
@@ -119,7 +119,8 @@ describe("GET /api/leads", () => {
   })
 
   it("queries leads for the correct user", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-42" } })
+    // USER role filters by userId; ADMIN sees all
+    mockAuth.mockResolvedValue({ user: { id: "user-42", role: "USER" } })
     mockPrisma.lead.findMany.mockResolvedValue([])
 
     const { GET } = await import("@/app/api/leads/route")
@@ -148,7 +149,7 @@ describe("POST /api/leads", () => {
   })
 
   it("creates a lead with valid data", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     const createdLead = {
       id: "lead-new",
       name: "Sarah Connor",
@@ -175,7 +176,7 @@ describe("POST /api/leads", () => {
   })
 
   it("returns 400 for invalid data (empty name)", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     const { POST } = await import("@/app/api/leads/route")
     const request = createRequest("POST", { name: "" })
@@ -187,7 +188,7 @@ describe("POST /api/leads", () => {
   })
 
   it("returns 400 for invalid source enum", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     const { POST } = await import("@/app/api/leads/route")
     const request = createRequest("POST", { name: "Test", source: "FAKE" })
@@ -196,7 +197,7 @@ describe("POST /api/leads", () => {
   })
 
   it("sets default values for optional fields", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.create.mockImplementation(async (args: any) => ({
       id: "lead-new",
       ...args.data,
@@ -228,7 +229,7 @@ describe("GET /api/leads/[id]", () => {
   })
 
   it("returns 404 when lead not found", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findFirst.mockResolvedValue(null)
 
     const { GET } = await import("@/app/api/leads/[id]/route")
@@ -238,7 +239,7 @@ describe("GET /api/leads/[id]", () => {
   })
 
   it("returns lead with notes and follow-ups", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     const mockLead = {
       id: "lead-1",
       name: "Jane Smith",
@@ -260,7 +261,7 @@ describe("GET /api/leads/[id]", () => {
   })
 
   it("only returns lead if it belongs to the authenticated user", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findFirst.mockResolvedValue(null) // not found for this user
 
     const { GET } = await import("@/app/api/leads/[id]/route")
@@ -285,7 +286,7 @@ describe("PATCH /api/leads/[id]", () => {
   })
 
   it("updates a lead with valid data", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     const existingLead = { id: "lead-1", name: "Old Name", userId: "user-1" }
     const updatedLead = { id: "lead-1", name: "New Name", userId: "user-1" }
     mockPrisma.lead.findFirst.mockResolvedValue(existingLead)
@@ -301,7 +302,7 @@ describe("PATCH /api/leads/[id]", () => {
   })
 
   it("returns 404 when lead not found", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findFirst.mockResolvedValue(null)
 
     const { PATCH } = await import("@/app/api/leads/[id]/route")
@@ -311,7 +312,7 @@ describe("PATCH /api/leads/[id]", () => {
   })
 
   it("returns 400 for invalid update data", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findFirst.mockResolvedValue({ id: "lead-1", userId: "user-1" })
 
     const { PATCH } = await import("@/app/api/leads/[id]/route")
@@ -336,7 +337,7 @@ describe("DELETE /api/leads/[id]", () => {
   })
 
   it("deletes an existing lead", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findFirst.mockResolvedValue({ id: "lead-1", userId: "user-1" })
     mockPrisma.lead.delete.mockResolvedValue({ id: "lead-1" })
 
@@ -350,7 +351,7 @@ describe("DELETE /api/leads/[id]", () => {
   })
 
   it("returns 404 when lead not found", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findFirst.mockResolvedValue(null)
 
     const { DELETE } = await import("@/app/api/leads/[id]/route")

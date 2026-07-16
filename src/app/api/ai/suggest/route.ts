@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { getUserRole, forbidden } from "@/lib/authorization"
 import Groq from "groq-sdk"
 
 const groq = new Groq({
@@ -10,6 +11,11 @@ export async function POST(request: Request) {
     const session = await auth()
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // VIEWER cannot use AI features (saves API credits)
+    if (getUserRole(session) === "VIEWER") {
+      return forbidden()
     }
 
     if (!process.env.GROQ_API_KEY) {

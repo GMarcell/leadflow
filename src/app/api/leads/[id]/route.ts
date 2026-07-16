@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { updateLeadSchema } from "@/lib/validation"
+import { getUserRole, canModifyLead, canDeleteLead, unauthorized, forbidden } from "@/lib/authorization"
 
 export async function GET(
   request: Request,
@@ -9,12 +10,17 @@ export async function GET(
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
     }
 
     const { id } = await params
+    const role = getUserRole(session)
+
+    // ADMIN / MANAGER / VIEWER can access any lead; USER only own
     const lead = await prisma.lead.findFirst({
-      where: { id, userId: session.user.id },
+      where: role === "ADMIN" || role === "MANAGER" || role === "VIEWER"
+        ? { id }
+        : { id, userId: session.user.id },
       include: {
         notes: { orderBy: { createdAt: "desc" } },
         followUps: { orderBy: { dueDate: "asc" } },
@@ -39,7 +45,12 @@ export async function PATCH(
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
+    }
+
+    // VIEWER cannot update leads
+    if (!canModifyLead(getUserRole(session))) {
+      return forbidden()
     }
 
     const { id } = await params
@@ -53,8 +64,11 @@ export async function PATCH(
       )
     }
 
+    const role = getUserRole(session)
     const lead = await prisma.lead.findFirst({
-      where: { id, userId: session.user.id },
+      where: role === "ADMIN" || role === "MANAGER"
+        ? { id }
+        : { id, userId: session.user.id },
     })
 
     if (!lead) {
@@ -80,12 +94,20 @@ export async function DELETE(
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
+    }
+
+    // Only ADMIN and MANAGER can delete leads
+    if (!canDeleteLead(getUserRole(session))) {
+      return forbidden()
     }
 
     const { id } = await params
+    const role = getUserRole(session)
     const lead = await prisma.lead.findFirst({
-      where: { id, userId: session.user.id },
+      where: role === "ADMIN" || role === "MANAGER"
+        ? { id }
+        : { id, userId: session.user.id },
     })
 
     if (!lead) {

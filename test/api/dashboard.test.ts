@@ -45,7 +45,7 @@ describe("GET /api/dashboard", () => {
   })
 
   it("returns empty dashboard stats when user has no data", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     // All counts return 0
     mockPrisma.lead.count.mockResolvedValue(0)
@@ -77,7 +77,7 @@ describe("GET /api/dashboard", () => {
   })
 
   it("calculates pipeline stats with mixed leads", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     // Total leads count
     mockPrisma.lead.count
@@ -140,7 +140,7 @@ describe("GET /api/dashboard", () => {
   })
 
   it("calculates conversion rate correctly when no closed deals", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     // Mock counts: total=5, newThisMonth=1, active=5, won=0, lost=0 + 7 timeline counts
     mockPrisma.lead.count
@@ -178,7 +178,7 @@ describe("GET /api/dashboard", () => {
   })
 
   it("calculates conversion rate with only won deals", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     mockPrisma.lead.count
       .mockResolvedValueOnce(5)
@@ -210,7 +210,7 @@ describe("GET /api/dashboard", () => {
   })
 
   it("includes recent leads sorted by newest", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     const recentLeads = [
       { id: "lead-1", name: "Recent Lead", createdAt: new Date().toISOString() },
@@ -242,7 +242,7 @@ describe("GET /api/dashboard", () => {
   })
 
   it("includes follow-ups due today", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     const followUps = [
       {
@@ -280,7 +280,7 @@ describe("GET /api/dashboard", () => {
   })
 
   it("builds stage distribution from grouped data", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     mockPrisma.lead.count
       .mockResolvedValue(0)
@@ -320,7 +320,7 @@ describe("GET /api/dashboard", () => {
   })
 
   it("builds source distribution from grouped data", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     mockPrisma.lead.count
       .mockResolvedValue(0)
@@ -357,7 +357,7 @@ describe("GET /api/dashboard", () => {
   })
 
   it("returns 500 when database throws", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     // Make the first count call throw
     mockPrisma.lead.count.mockRejectedValue(new Error("Database connection failed"))

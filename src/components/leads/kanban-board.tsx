@@ -1,112 +1,55 @@
-"use client"
+"use client";
 
-import { useState, useCallback } from "react"
-import {
-  DndContext,
-  DragOverlay,
-  DragStartEvent,
-  DragEndEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  useDroppable,
-  closestCorners,
-} from "@dnd-kit/core"
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import { LeadCard } from "./lead-card"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { formatCurrency } from "@/lib/utils"
-import { toast } from "sonner"
-import { Plus } from "lucide-react"
-
-const STAGES = [
-  { key: "NEW", label: "New", color: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
-  { key: "CONTACTED", label: "Contacted", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-  { key: "QUALIFIED", label: "Qualified", color: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
-  { key: "PROPOSAL_SENT", label: "Proposal Sent", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  { key: "WON", label: "Won", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-  { key: "LOST", label: "Lost", color: "bg-red-500/10 text-red-600 dark:text-red-400" },
-]
+import { LeadCard } from "./lead-card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/utils";
+import { STAGES } from "@/lib/stages";
 
 interface Lead {
-  id: string
-  name: string
-  company?: string | null
-  email?: string | null
-  phone?: string | null
-  source: string
-  tags: string[]
-  dealValue?: number | null
-  status: string
-  notes: any[]
-  followUps: any[]
-  createdAt: string
-  pipelineOrder: number
+  id: string;
+  name: string;
+  company?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  source: string;
+  tags: string[];
+  dealValue?: number | null;
+  status: string;
+  notes: unknown[];
+  followUps: unknown[];
+  createdAt: string;
+  pipelineOrder: number;
 }
 
 interface KanbanBoardProps {
-  leads: Lead[]
-  onUpdate: () => void
+  leads: Lead[];
+  onUpdate: () => void;
 }
 
-function SortableLeadCard({ lead, onUpdate }: { lead: Lead; onUpdate: () => void }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: lead.id })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className="touch-none"
-    >
-      <LeadCard lead={lead} onUpdate={onUpdate} isDragging={isDragging} />
-    </div>
-  )
-}
-
-function DroppableColumn({
+function PipelineColumn({
   stage,
   leads,
   stageValue,
   onUpdate,
 }: {
-  stage: { key: string; label: string; color: string }
-  leads: Lead[]
-  stageValue: number
-  onUpdate: () => void
+  stage: { key: string; label: string; color: string };
+  leads: Lead[];
+  stageValue: number;
+  onUpdate: () => void;
 }) {
-  const { setNodeRef: droppableRef, isOver } = useDroppable({ id: stage.key })
-
   return (
-    <div
-      ref={droppableRef}
-      className={`flex-shrink-0 w-72 transition-opacity ${isOver ? "opacity-80" : ""}`}
-    >
+    <div className="shrink-0 w-72">
       <Card>
         <CardHeader className="p-3 pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${stage.color.split(" ")[0]}`} />
-              <CardTitle className="text-sm font-medium">{stage.label}</CardTitle>
+              <div
+                className={`w-2 h-2 rounded-full ${stage.color.split(" ")[0]}`}
+              />
+              <CardTitle className="text-sm font-medium">
+                {stage.label}
+              </CardTitle>
             </div>
             <Badge variant="secondary" className="text-xs">
               {leads.length}
@@ -119,149 +62,45 @@ function DroppableColumn({
           )}
         </CardHeader>
         <CardContent className="p-3 pt-2 space-y-2 min-h-[120px]">
-          <SortableContext
-            items={leads.map((l) => l.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {leads.map((lead) => (
-              <SortableLeadCard
-                key={lead.id}
-                lead={lead}
-                onUpdate={onUpdate}
-              />
-            ))}
-          </SortableContext>
+          {leads.map((lead) => (
+            <LeadCard key={`${lead.id}-${lead.status}`} lead={lead} onUpdate={onUpdate} />
+          ))}
           {leads.length === 0 && (
             <div className="flex items-center justify-center h-20 border-2 border-dashed rounded-lg border-muted-foreground/20">
-              <p className="text-xs text-muted-foreground">Drop leads here</p>
+              <p className="text-xs text-muted-foreground">No leads</p>
             </div>
           )}
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 export function KanbanBoard({ leads: allLeads, onUpdate }: KanbanBoardProps) {
-  const [activeId, setActiveId] = useState<string | null>(null)
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 4,
-      },
-    })
-  )
-
   const getLeadsByStage = (stage: string) =>
     allLeads
       .filter((l) => l.status === stage)
-      .sort((a, b) => a.pipelineOrder - b.pipelineOrder)
+      .sort((a, b) => a.pipelineOrder - b.pipelineOrder);
 
   const getStageValue = (stage: string) =>
-    getLeadsByStage(stage).reduce((sum, l) => sum + (l.dealValue || 0), 0)
-
-  const activeLead = activeId ? allLeads.find((l) => l.id === activeId) : null
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string)
-  }, [])
-
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      setActiveId(null)
-      const { active, over } = event
-
-      if (!over) return
-
-      const activeLead = allLeads.find((l) => l.id === active.id)
-      if (!activeLead) return
-
-      // Determine target stage
-      let targetStage = ""
-      if (STAGES.some((s) => s.key === over.id)) {
-        targetStage = over.id as string
-      } else {
-        const overLead = allLeads.find((l) => l.id === over.id)
-        if (overLead) {
-          targetStage = overLead.status
-        }
-      }
-
-      if (!targetStage) return
-
-      // Determine the new order position based on where the card was dropped
-      const stageLeads = getLeadsByStage(targetStage)
-      const activeLeadIndex = stageLeads.findIndex((l) => l.id === activeLead.id)
-
-      let newOrder: number
-      if (STAGES.some((s) => s.key === over.id)) {
-        // Dropped directly on the column — place at the end
-        newOrder = stageLeads.length
-        // If same stage, adjust since the card is being removed from its current spot
-        if (targetStage === activeLead.status) {
-          newOrder = Math.max(0, stageLeads.length - 1)
-        }
-      } else {
-        // Dropped on a specific card — take that card's position
-        const overIndex = stageLeads.findIndex((l) => l.id === over.id)
-        newOrder = overIndex >= 0 ? overIndex : stageLeads.length
-      }
-
-      // Skip if the card didn't actually move
-      const sameStage = targetStage === activeLead.status
-      if (sameStage && activeLeadIndex === newOrder) return
-
-      try {
-        const res = await fetch("/api/pipeline/move", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            leadId: activeLead.id,
-            status: targetStage,
-            order: newOrder,
-          }),
-        })
-
-        if (!res.ok) throw new Error("Failed to move lead")
-        onUpdate()
-      } catch {
-        toast.error("Failed to move lead")
-        onUpdate()
-      }
-    },
-    [allLeads, onUpdate]
-  )
+    getLeadsByStage(stage).reduce((sum, l) => sum + (l.dealValue || 0), 0);
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
-        {STAGES.map((stage) => {
-          const stageLeads = getLeadsByStage(stage.key)
-          const stageValue = getStageValue(stage.key)
+    <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
+      {STAGES.map((stage) => {
+        const stageLeads = getLeadsByStage(stage.key);
+        const stageValue = getStageValue(stage.key);
 
-          return (
-            <DroppableColumn
-              key={stage.key}
-              stage={stage}
-              leads={stageLeads}
-              stageValue={stageValue}
-              onUpdate={onUpdate}
-            />
-          )
-        })}
-      </div>
-
-      <DragOverlay>
-        {activeLead ? (
-          <LeadCard lead={activeLead} onUpdate={onUpdate} isDragging />
-        ) : null}
-      </DragOverlay>
-    </DndContext>
-  )
+        return (
+          <PipelineColumn
+            key={stage.key}
+            stage={stage}
+            leads={stageLeads}
+            stageValue={stageValue}
+            onUpdate={onUpdate}
+          />
+        );
+      })}
+    </div>
+  );
 }

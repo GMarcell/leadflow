@@ -1,22 +1,28 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getUserRole, unauthorized } from "@/lib/authorization"
 
 export async function GET() {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
     }
 
+    const role = getUserRole(session)
+    // ADMIN / MANAGER / VIEWER see all data; USER sees only own
     const userId = session.user.id
+    const whereAll = role === "ADMIN" || role === "MANAGER" || role === "VIEWER"
+      ? {}
+      : { userId }
 
     // Total leads
-    const totalLeads = await prisma.lead.count({ where: { userId } })
+    const totalLeads = await prisma.lead.count({ where: whereAll })
 
     // Leads by status
     const leadsByStatus = await prisma.lead.groupBy({
       by: ["status"],
-      where: { userId },
+      where: whereAll,
       _count: { id: true },
       _sum: { dealValue: true },
     })
@@ -28,7 +34,7 @@ export async function GET() {
 
     const newLeadsThisMonth = await prisma.lead.count({
       where: {
-        userId,
+        ...whereAll,
         createdAt: { gte: startOfMonth },
       },
     })
@@ -36,30 +42,30 @@ export async function GET() {
     // Active leads (not won/lost)
     const activeLeads = await prisma.lead.count({
       where: {
-        userId,
+        ...whereAll,
         status: { notIn: ["WON", "LOST"] },
       },
     })
 
     // Pipeline value (active deals)
     const pipelineResult = await prisma.lead.aggregate({
-      where: { userId, status: { notIn: ["WON", "LOST"] } },
+      where: { ...whereAll, status: { notIn: ["WON", "LOST"] } },
       _sum: { dealValue: true },
     })
 
     // Won deals
     const wonDeals = await prisma.lead.count({
-      where: { userId, status: "WON" },
+      where: { ...whereAll, status: "WON" },
     })
 
     const wonResult = await prisma.lead.aggregate({
-      where: { userId, status: "WON" },
+      where: { ...whereAll, status: "WON" },
       _sum: { dealValue: true },
     })
 
     // Lost deals (for conversion rate)
     const lostDeals = await prisma.lead.count({
-      where: { userId, status: "LOST" },
+      where: { ...whereAll, status: "LOST" },
     })
 
     const totalClosed = wonDeals + lostDeals
@@ -77,7 +83,7 @@ export async function GET() {
     // Source distribution for charts
     const sourceDistribution = await prisma.lead.groupBy({
       by: ["source"],
-      where: { userId },
+      where: whereAll,
       _count: { id: true },
     })
 
@@ -102,7 +108,7 @@ export async function GET() {
         nextDay.setDate(nextDay.getDate() + 1)
         const count = await prisma.lead.count({
           where: {
-            userId,
+            ...whereAll,
             createdAt: { gte: date, lt: nextDay },
           },
         })
@@ -115,19 +121,23 @@ export async function GET() {
 
     // Recent leads
     const recentLeads = await prisma.lead.findMany({
-      where: { userId },
+      where: whereAll,
       orderBy: { createdAt: "desc" },
       take: 5,
     })
 
-    // Follow-ups due
+    // Follow-ups due (only own for USER, all for others)
+    const followUpsWhere = role === "ADMIN" || role === "MANAGER" || role === "VIEWER"
+      ? {}
+      : { userId: session.user.id }
+
     const now = new Date()
     const endOfDay = new Date(now)
     endOfDay.setHours(23, 59, 59, 999)
 
     const followUpsDue = await prisma.followUp.findMany({
       where: {
-        userId,
+        ...followUpsWhere,
         completed: false,
         dueDate: { lte: endOfDay },
       },

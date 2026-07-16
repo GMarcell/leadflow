@@ -1,12 +1,18 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createNoteSchema } from "@/lib/validation"
+import { getUserRole, canModifyLead, unauthorized, forbidden } from "@/lib/authorization"
 
 export async function POST(request: Request) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
+    }
+
+    // VIEWER cannot create notes
+    if (!canModifyLead(getUserRole(session))) {
+      return forbidden()
     }
 
     const body = await request.json()
@@ -19,9 +25,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verify lead belongs to user
+    // Verify lead belongs to user (or accessible by role)
+    const role = getUserRole(session)
     const lead = await prisma.lead.findFirst({
-      where: { id: result.data.leadId, userId: session.user.id },
+      where: role === "ADMIN" || role === "MANAGER"
+        ? { id: result.data.leadId }
+        : { id: result.data.leadId, userId: session.user.id },
     })
 
     if (!lead) {

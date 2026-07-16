@@ -1,6 +1,7 @@
 "use client"
 
-import { forwardRef, useState } from "react"
+import { useState } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -8,10 +9,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Textarea } from "@/components/ui/textarea"
 import { LeadForm } from "./lead-form"
 import { formatCurrency, formatDateTime, timeAgo } from "@/lib/utils"
-import { Pencil, Trash2, MessageSquarePlus, Sparkles, Loader2, CalendarPlus, Lightbulb } from "lucide-react"
+import { Pencil, Trash2, MessageSquarePlus, Sparkles, Loader2, CalendarPlus, Lightbulb, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
+import { STAGES } from "@/lib/stages"
 
 interface Lead {
   id: string
@@ -33,8 +41,11 @@ interface LeadCardProps {
   onUpdate: () => void
 }
 
-export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: React.CSSProperties; isDragging?: boolean }>(
-  function LeadCard({ lead, onUpdate, style, isDragging, ...props }, ref) {
+export function LeadCard({ lead, onUpdate }: LeadCardProps) {
+    const { data: session } = useSession()
+    const userRole = (session?.user as any)?.role as string | undefined
+    const isViewer = userRole === "VIEWER"
+
     const [showEdit, setShowEdit] = useState(false)
     const [showNote, setShowNote] = useState(false)
     const [showFollowUp, setShowFollowUp] = useState(false)
@@ -181,39 +192,74 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
     }
 
     const latestNote = lead.notes?.[0]
+    const currentStage = STAGES.find((s) => s.key === lead.status)
+
+    async function handleMoveStage(targetStage: string) {
+      if (targetStage === lead.status) return
+      try {
+        const res = await fetch("/api/pipeline/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leadId: lead.id,
+            status: targetStage,
+          }),
+        })
+        if (!res.ok) throw new Error("Failed to move lead")
+        toast.success(`Moved to ${STAGES.find((s) => s.key === targetStage)?.label}`)
+        onUpdate()
+      } catch {
+        toast.error("Failed to move lead")
+      }
+    }
 
     const cardContent = (
-      <Card
-        ref={ref}
-        style={style}
-        className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${isDragging ? "opacity-50 shadow-lg" : ""}`}
-        {...props}
-      >
+      <Card className="animate-card-enter hover:shadow-md transition-shadow">
         <CardContent className="p-3 space-y-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{lead.name}</p>
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`w-2 h-2 rounded-full ${currentStage?.color.split(" ")[0] || "bg-gray-400"}`}
+                  title={currentStage?.label || lead.status}
+                />
+                <Badge
+                  variant="secondary"
+                  className={`text-[10px] px-1.5 py-0 leading-tight font-medium shrink-0 ${
+                    currentStage ? currentStage.color.split(" ").slice(1).join(" ") : ""
+                  }`}
+                >
+                  {currentStage?.label || lead.status}
+                </Badge>
+                <p className="text-sm font-medium truncate">{lead.name}</p>
+              </div>
               {lead.company && (
                 <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
               )}
             </div>
             <div className="flex gap-0.5 shrink-0">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setShowEdit(true)}
-                className="h-6 w-6"
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={handleDelete}
-                className="h-6 w-6 text-destructive"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
+              {!isViewer && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setShowEdit(true)}
+                  className="h-6 w-6"
+                  title="Edit lead"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              )}
+              {userRole === "ADMIN" || userRole === "MANAGER" ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleDelete}
+                  className="h-6 w-6 text-destructive"
+                  title="Delete lead"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -243,24 +289,55 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
           </div>
 
           <div className="flex items-center gap-1 pt-1 border-t">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-7 w-7"
-              onClick={() => setShowNote(true)}
-              title="Add note"
-            >
-              <MessageSquarePlus className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-7 w-7"
-              onClick={() => setShowFollowUp(true)}
-              title="Set follow-up"
-            >
-              <CalendarPlus className="h-3.5 w-3.5" />
-            </Button>
+            {!isViewer && (
+              <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7"
+                  title="Move to stage"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[140px]">
+                {STAGES.map((stage) => (
+                  <DropdownMenuItem
+                    key={stage.key}
+                    onClick={() => handleMoveStage(stage.key)}
+                    disabled={stage.key === lead.status}
+                    className={stage.key === lead.status ? "text-muted-foreground/50" : ""}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${stage.color.split(" ")[0]}`} />
+                    {stage.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {!isViewer && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-7 w-7"
+                onClick={() => setShowNote(true)}
+                title="Add note"
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {!isViewer && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-7 w-7"
+                onClick={() => setShowFollowUp(true)}
+                title="Set follow-up"
+              >
+                <CalendarPlus className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon-sm"
@@ -458,4 +535,3 @@ export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps & { style?: Rea
       </div>
     )
   }
-)

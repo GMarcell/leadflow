@@ -47,7 +47,7 @@ describe("GET /api/follow-ups", () => {
   })
 
   it("returns empty list when no follow-ups", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.followUp.findMany.mockResolvedValue([])
 
     const { GET } = await import("@/app/api/follow-ups/route")
@@ -59,7 +59,7 @@ describe("GET /api/follow-ups", () => {
   })
 
   it("returns follow-ups with lead name", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     const mockFollowUps = [
       {
         id: "fu-1",
@@ -89,7 +89,7 @@ describe("GET /api/follow-ups", () => {
   })
 
   it("orders follow-ups by due date ascending", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.followUp.findMany.mockResolvedValue([])
 
     const { GET } = await import("@/app/api/follow-ups/route")
@@ -122,7 +122,7 @@ describe("POST /api/follow-ups", () => {
   })
 
   it("creates a follow-up with valid data", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findFirst.mockResolvedValue({ id: "lead-1", userId: "user-1" })
     const createdFu = {
       id: "fu-new",
@@ -150,7 +150,7 @@ describe("POST /api/follow-ups", () => {
   })
 
   it("returns 404 when lead does not exist", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findFirst.mockResolvedValue(null)
 
     const { POST } = await import("@/app/api/follow-ups/route")
@@ -164,7 +164,7 @@ describe("POST /api/follow-ups", () => {
   })
 
   it("returns 400 for missing title", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     const { POST } = await import("@/app/api/follow-ups/route")
     const request = createRequest("POST", {
@@ -176,7 +176,7 @@ describe("POST /api/follow-ups", () => {
   })
 
   it("returns 400 for empty leadId", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     const { POST } = await import("@/app/api/follow-ups/route")
     const request = createRequest("POST", {
@@ -189,7 +189,7 @@ describe("POST /api/follow-ups", () => {
   })
 
   it("creates a follow-up with optional description", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.lead.findFirst.mockResolvedValue({ id: "lead-1", userId: "user-1" })
     mockPrisma.followUp.create.mockResolvedValue({
       id: "fu-new",
@@ -228,7 +228,7 @@ describe("PATCH /api/follow-ups", () => {
   })
 
   it("marks a follow-up as complete", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.followUp.findFirst.mockResolvedValue({ id: "fu-1", userId: "user-1" })
     const updatedFu = { id: "fu-1", completed: true, userId: "user-1" }
     mockPrisma.followUp.update.mockResolvedValue(updatedFu)
@@ -243,7 +243,7 @@ describe("PATCH /api/follow-ups", () => {
   })
 
   it("returns 400 when no id provided", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     const { PATCH } = await import("@/app/api/follow-ups/route")
     const request = createRequest("PATCH", { completed: true }, "http://localhost:3000/api/follow-ups")
@@ -252,7 +252,7 @@ describe("PATCH /api/follow-ups", () => {
   })
 
   it("returns 404 when follow-up not found", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.followUp.findFirst.mockResolvedValue(null)
 
     const { PATCH } = await import("@/app/api/follow-ups/route")
@@ -262,7 +262,7 @@ describe("PATCH /api/follow-ups", () => {
   })
 
   it("updates multiple fields at once", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.followUp.findFirst.mockResolvedValue({ id: "fu-1", userId: "user-1" })
     mockPrisma.followUp.update.mockImplementation(async (args: any) => args.data)
 
@@ -292,7 +292,7 @@ describe("DELETE /api/follow-ups", () => {
   })
 
   it("deletes an existing follow-up", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.followUp.findFirst.mockResolvedValue({ id: "fu-1", userId: "user-1" })
     mockPrisma.followUp.delete.mockResolvedValue({ id: "fu-1" })
 
@@ -306,7 +306,7 @@ describe("DELETE /api/follow-ups", () => {
   })
 
   it("returns 400 when no id provided", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
 
     const { DELETE } = await import("@/app/api/follow-ups/route")
     const request = createRequest("DELETE", undefined, "http://localhost:3000/api/follow-ups")
@@ -315,7 +315,7 @@ describe("DELETE /api/follow-ups", () => {
   })
 
   it("returns 404 when follow-up not found", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" } })
+    mockAuth.mockResolvedValue({ user: { id: "user-1", role: "ADMIN" } })
     mockPrisma.followUp.findFirst.mockResolvedValue(null)
 
     const { DELETE } = await import("@/app/api/follow-ups/route")

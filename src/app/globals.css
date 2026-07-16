@@ -164,3 +164,20 @@ body {
   max-height: calc(100vh - 12rem);
   overflow-y: auto;
 }
+
+/* ─── Animations ─────────────────────────────────── */
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-card-enter {
+  animation: card-enter 0.25s ease-out;
+}

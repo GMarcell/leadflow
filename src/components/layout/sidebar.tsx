@@ -16,6 +16,7 @@ import {
   Check,
   X,
   Bell,
+  Shield,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { signOut, useSession } from "next-auth/react"
@@ -45,6 +46,8 @@ export function Sidebar({ isMobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()
+
+  const userRole = (session?.user as any)?.role
 
   const renderNavItems = (onClick?: () => void) =>
     navItems.map((item) => {
@@ -106,6 +109,21 @@ export function Sidebar({ isMobileOpen, onMobileClose }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           {renderNavItems(onMobileClose)}
+          {userRole === "ADMIN" && (
+            <Link
+              href="/admin/users"
+              onClick={onMobileClose}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                pathname.startsWith("/admin")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              )}
+            >
+              <Shield className="h-4 w-4" />
+              <span className="flex-1">Admin</span>
+            </Link>
+          )}
         </nav>
 
         {/* User & Theme */}
@@ -121,6 +139,14 @@ export function Sidebar({ isMobileOpen, onMobileClose }: SidebarProps) {
               <p className="text-xs text-sidebar-foreground/60 truncate">
                 {session?.user?.email || ""}
               </p>
+              {(session?.user as any)?.role && (
+                <Badge
+                  variant="secondary"
+                  className="mt-1 text-[10px] px-1.5 py-0 leading-tight font-medium"
+                >
+                  {(session?.user as any)?.role}
+                </Badge>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">

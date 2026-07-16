@@ -1,16 +1,25 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createLeadSchema } from "@/lib/validation"
+import { getUserRole, canModifyLead, unauthorized, forbidden } from "@/lib/authorization"
 
 export async function GET() {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
     }
 
+    const role = getUserRole(session)
+
+    // ADMIN / MANAGER / VIEWER see all leads; USER sees only own
+    const where =
+      role === "ADMIN" || role === "MANAGER" || role === "VIEWER"
+        ? {}
+        : { userId: session.user.id }
+
     const leads = await prisma.lead.findMany({
-      where: { userId: session.user.id },
+      where,
       include: {
         notes: { orderBy: { createdAt: "desc" }, take: 5 },
         followUps: { orderBy: { dueDate: "asc" }, take: 3 },
@@ -29,7 +38,12 @@ export async function POST(request: Request) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return unauthorized()
+    }
+
+    // VIEWER cannot create leads
+    if (!canModifyLead(getUserRole(session))) {
+      return forbidden()
     }
 
     const body = await request.json()
